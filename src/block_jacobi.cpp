@@ -1,5 +1,6 @@
 // implementation (naive dense block invert for demonstration)
-#include <algorithm>
+
+#include "block_jacobi.hpp"
 
 BlockJacobiPrecond::BlockJacobiPrecond(const CSRMatrix &A, int block_size_)
     : block_size(block_size_), nlocal(A.local_n()) {

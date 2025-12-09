@@ -1,6 +1,10 @@
 #ifndef BLOCK_JACOBI_PRECOND_HPP
 #define BLOCK_JACOBI_PRECOND_HPP
-
+#include <algorithm>
+#include <vector>
+#include <cmath>
+#include "matrix.hpp"
+#include "preconditioner.hpp"
 #include "preconditioner.hpp"
 
 class BlockJacobiPrecond : public Preconditioner {
