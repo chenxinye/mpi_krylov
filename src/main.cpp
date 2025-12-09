@@ -1,8 +1,15 @@
-#include <vector>
-#include <iostream>
 #include <mpi.h>
+#include <iostream>
+#include <vector>
+#include <chrono>
 #include "matrix.hpp"
 #include "preconditioner.hpp"
+#include "jacobi.hpp"
+#include "block_jacobi.hpp"
+#include "ilu0.hpp"
+#include "iluk.hpp"
+#include "spai.hpp"
+#include "utils.hpp"
 #include "cg.hpp"
 #include "bicgstab.hpp"
 #include "gmres.hpp"
@@ -63,18 +70,25 @@ int main(int argc, char** argv) {
         {"SPAI", &spai}
     };
 
-    struct SolverDesc { std::string name; decltype(cg_wrapper) *fn; };
+    struct SolverDesc {
+    const char* name;
+    std::function<int(const CSRMatrix&, const std::vector<double>&, std::vector<double>&,
+                      int, double, MPI_Comm, Preconditioner*, int*, double*)> solver;
+    };
+
     std::vector<SolverDesc> solvers = {
-        {"CG", &cg_wrapper},
-        {"BiCGStab", &bicg_wrapper},
-        {"GMRES", &gmres_wrapper}
+        {"CG", cg_wrapper},
+        {"BiCGStab", bicg_wrapper},
+        {"GMRES", gmres_wrapper}
     };
 
     if (rank==0) {
-        std::cout << "Global N="<<N<<" ranks="<<size<<" local rows="<<A.local_n()<<" global nnz="<<global_nnz(A,MPI_COMM_WORLD)<<"
-";
-        std::cout << "Testing solvers with preconditioners...
-";
+        std::cout << "Global N=" << N 
+          << " ranks=" << size 
+          << " local rows=" << A.nrows 
+          << " global nnz=" << global_nnz(A, MPI_COMM_WORLD)
+          << "\n";
+        std::cout << "Testing solvers with preconditioners...\n";
     }
 
     for (auto &s : solvers) {
