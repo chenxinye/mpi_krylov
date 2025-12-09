@@ -1,15 +1,25 @@
 CXX = mpicxx
-CXXFLAGS = -O3 -std=c++17 -Wall
+CXXFLAGS = -O3 -std=c++17 -Wall -Iinclude
 
-OBJS = main.o matrix.o preconditioner.o cg.o bicg.o gmres.o
+SRC_DIR = src
+OBJ_DIR = obj
+BIN = solver
 
-all: solver
+SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
-solver: $(OBJS)
-	$(CXX) $(CXXFLAGS) -o solver $(OBJS)
+all: $(BIN)
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $<
+$(BIN): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS)
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
 
 clean:
-	rm -f *.o solver
+	rm -rf $(OBJ_DIR) $(BIN)
+
+.PHONY: all clean
