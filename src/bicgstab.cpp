@@ -1,8 +1,14 @@
+#include <vector>
 #include <cmath>
+#include <mpi.h>
+
+#include "matrix.hpp"
+#include "preconditioner.hpp"
+
 int bicgstab_solve(const CSRMatrix& A, const std::vector<double>& b_local, std::vector<double>& x_local,
                    int max_iter, double tol, MPI_Comm comm, Preconditioner* M,
-                   int *out_iters, double *out_final_res_norm) {
-    int n = A.local_n();
+                   std::vector<double>& work) {
+    int n = A.nrows;
     std::vector<double> r(n), r0(n), p(n), v(n), s(n), t(n), z(n);
     distributed_matvec(A, x_local, v, comm);
     for (int i = 0; i < n; ++i) r[i] = b_local[i] - v[i];
