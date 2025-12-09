@@ -1,7 +1,12 @@
 #ifndef ILUK_PRECOND_HPP
 #define ILUK_PRECOND_HPP
 
+
+#include <vector>
+#include <cmath>
+#include "matrix.hpp"
 #include "preconditioner.hpp"
+
 
 class ILUkPrecond : public Preconditioner {
     int klevel;
