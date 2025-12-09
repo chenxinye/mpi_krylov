@@ -1,15 +1,11 @@
-#include <mpi.h>
-#include <iostream>
 #include <vector>
-#include <chrono>
+#include <iostream>
+#include <mpi.h>
 #include "matrix.hpp"
 #include "preconditioner.hpp"
-#include "jacobi.hpp"
-#include "block_jacobi.hpp"
-#include "ilu0.hpp"
-#include "iluk.hpp"
-#include "spai.hpp"
-#include "utils.hpp"
+#include "cg.hpp"
+#include "bicgstab.hpp"
+#include "gmres.hpp"
 
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
