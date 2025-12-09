@@ -3,7 +3,6 @@
 #
 # Author: Xinye Chen
 # Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
-# Date: 2025-12-09
 #
 # Description:
 #   Build system for the MPI Krylov Solver Project. Compiles C++17 source files
