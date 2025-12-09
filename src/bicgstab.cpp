@@ -6,8 +6,8 @@ int bicgstab_solve(const CSRMatrix& A,
                     int max_iter, double tol,
                     MPI_Comm comm,
                     Preconditioner* M,
-                    int* out_iters = nullptr,
-                    double* out_final_res_norm = nullptr) {
+                    int* out_iters,
+                    double* out_final_res_norm) {
     int n = A.nrows;
     std::vector<double> r(n), r0(n), p(n), v(n), s(n), t(n), z(n);
     distributed_matvec(A, x_local, v, comm);
