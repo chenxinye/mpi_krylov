@@ -7,7 +7,7 @@
 #include "jacobi.hpp"
 #include "block_jacobi.hpp"
 #include "ilu0.hpp"
-#include "ilu_k.hpp"
+#include "iluk.hpp"
 #include "spai.hpp"
 #include "utils.hpp"
 
