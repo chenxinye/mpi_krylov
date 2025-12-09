@@ -28,4 +28,4 @@ Since this is an MPI program, use mpirun or mpiexec to run the executable. For e
 mpirun -np 4 ./solver
 ```
 
-The program executes all three solvers on a test sparse matrix and prints iteration counts, final residuals, and runtime for each solver. Preconditioners, if included, are applied automatically. Adjust the number of MPI processes using -np according to your system capabilities.
+The program performs on a small poisson dataset (can be replaced), executes all three solvers on a test sparse matrix and prints iteration counts, final residuals, and runtime for each solver. Preconditioners, if included, are applied automatically. Adjust the number of MPI processes using -np according to your system capabilities.
