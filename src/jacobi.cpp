@@ -1,5 +1,6 @@
 #include <stdexcept>
 
+#include "jacobi.hpp"
 JacobiPrecond::JacobiPrecond(const CSRMatrix &A) {
     invdiag_local.assign(A.local_n(), 0.0);
     for (int i = 0; i < A.local_n(); ++i) {

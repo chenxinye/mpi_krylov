@@ -1,6 +1,9 @@
 #ifndef SPAI_PRECOND_HPP
 #define SPAI_PRECOND_HPP
 
+#include <vector>
+#include <cmath>
+#include "matrix.hpp"
 #include "preconditioner.hpp"
 
 class SPAIPrecond : public Preconditioner {

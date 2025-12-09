@@ -1,7 +1,11 @@
 #ifndef JACOBI_PRECOND_HPP
 #define JACOBI_PRECOND_HPP
 
+#include <vector>
+#include <cmath>
+#include "matrix.hpp"
 #include "preconditioner.hpp"
+
 
 class JacobiPrecond : public Preconditioner {
     std::vector<double> invdiag_local; // inverse of diagonal for local rows
