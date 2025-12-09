@@ -3,7 +3,6 @@
  * 
  * Author: Xinye Chen
  * Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
- * Date: 2025-12-09
  * 
  * Description:
  *   Parallel implementations of Krylov subspace solvers for sparse linear systems 
