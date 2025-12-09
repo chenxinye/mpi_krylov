@@ -100,8 +100,7 @@ int main(int argc, char** argv) {
             int status = s.fn(A,b_local,x,1000,1e-8,MPI_COMM_WORLD, pc.second, &iters, &final_norm);
             double t1 = MPI_Wtime();
             if (rank==0) {
-                std::cout << "Solver="<<s.name<<" Precond="<<pc.first<<" iters="<<iters<<" final_res="<<final_norm<<" time="<< (t1-t0) <<"s
-";
+                std::cout << "Solver="<<s.name<<" Precond="<<pc.first<<" iters="<<iters<<" final_res="<<final_norm<<" time="<< (t1-t0) <<"s\n  ";
             }
         }
     }
