@@ -1,5 +1,4 @@
-#include <cmath>
-#include <iostream>
+#include "cg.hpp"
 
 int cg_solve(const CSRMatrix& A, const std::vector<double>& b_local, std::vector<double>& x_local,
              int max_iter, double tol, MPI_Comm comm, Preconditioner* M,
