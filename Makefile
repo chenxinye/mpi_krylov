@@ -1,3 +1,20 @@
+# =============================================================================
+# MPI Krylov Solver Project - Makefile
+#
+# Author: Xinye Chen
+# Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
+# Date: 2025-12-09
+#
+# Description:
+#   Build system for the MPI Krylov Solver Project. Compiles C++17 source files
+#   implementing parallel Krylov subspace solvers (CG, BiCGStab, GMRES) and 
+#   optional preconditioners (Jacobi, Block Jacobi, ILU0) using MPI.
+#
+# Usage:
+#   make        # Compile all source files and build the executable 'solver'
+#   make clean  # Remove object files and executable
+# ============================================================================
+
 CXX = mpicxx
 CXXFLAGS = -O3 -std=c++17 -Wall -Iinclude
 

@@ -1,3 +1,10 @@
+/*
+ * MPI Krylov Solver Project
+ * 
+ * Author: Xinye Chen
+ * Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
+ * Date: 2025-12-09
+ */ 
 
 #include "spai.hpp"
 

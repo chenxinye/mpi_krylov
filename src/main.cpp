@@ -1,9 +1,26 @@
+/*
+ * MPI Krylov Solver Project
+ * 
+ * Author: Xinye Chen
+ * Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
+ * Date: 2025-12-09
+ * 
+ * Description:
+ *   Parallel implementations of Krylov subspace solvers for sparse linear systems 
+ *   using MPI in C++. Solvers included are Conjugate Gradient (CG), BiCGStab, 
+ *   and GMRES, with optional preconditioners such as Jacobi, Block Jacobi, and ILU0.
+ * 
+ *   The project is designed for distributed-memory environments, supporting
+ *   CSR-formatted sparse matrices and modular preconditioner interfaces.
+ */
+
 #include <mpi.h>
 #include <iostream>
 #include <vector>
 #include <functional>
 #include "matrix.hpp"
 #include "preconditioner.hpp"
+#include "jacobi.hpp"
 #include "cg.hpp"
 #include "bicgstab.hpp"
 #include "gmres.hpp"
@@ -22,7 +39,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     // 构造示例 1D Poisson 矩阵
-    int N = 16; // 可通过命令行设置
+    int N = 16; // One can define via command line
     CSRMatrix A;
     A.nrows = A.ncols = N;
     A.row_ptr.resize(N+1);
@@ -41,8 +58,7 @@ int main(int argc, char** argv) {
     std::vector<double> b(N, 1.0);
     std::vector<double> x(N, 0.0);
 
-    // 构造预处理器示例
-    JacobiPrecond jacobi(A);
+    JacobiPrecond jacobi(A); // 构造预处理器示例
 
     // Lambda 包装 solver
     auto cg_wrapper = [](const CSRMatrix& A, const std::vector<double>& b,
@@ -67,13 +83,18 @@ int main(int argc, char** argv) {
         {"GMRES", gmres_wrapper}
     };
 
-    // 迭代每个 solver
-    for (auto& s : solvers) {
+    
+    for (auto& s : solvers) { // 迭代每个 solver
         std::vector<double> x_local(N,0.0);
         int iters = 0;
         double final_norm = 0.0;
         double t0 = MPI_Wtime();
         int status = s.solver(A, b, x_local, 1000, 1e-8, MPI_COMM_WORLD, &jacobi, &iters, &final_norm);
+        
+        if (status != 0) {
+            std::cout << "Solver failed with code " << status << "\n";
+        }
+        
         double t1 = MPI_Wtime();
 
         if (rank == 0) {
@@ -82,6 +103,7 @@ int main(int argc, char** argv) {
                       << " final_res=" << final_norm
                       << " time=" << (t1 - t0) << " s\n";
         }
+
     }
 
     MPI_Finalize();
