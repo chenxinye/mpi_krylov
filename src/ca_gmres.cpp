@@ -131,7 +131,7 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
                 }
             }
 
-            // 5. Givens Rotation
+            // Givens Rotation (to be replaced)
             for (int step = 0; step < current_s; ++step) {
                 int col = j + step;
                 for (int i = 0; i < col; ++i) {
