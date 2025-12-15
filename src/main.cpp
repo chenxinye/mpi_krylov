@@ -23,9 +23,8 @@
 #include "cg.hpp"
 #include "bicgstab.hpp"
 #include "gmres.hpp"
-#include "cagmres.hpp" // [NEW] Added CA-GMRES header
+#include "cagmres.hpp" 
 
-// Define solver description structure
 struct SolverDesc {
     const char* name;
     std::function<int(const CSRMatrix&, const std::vector<double>&, std::vector<double>&,
@@ -39,10 +38,10 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     // Construct distributed 1D Poisson matrix
-    int N = 10000; // Global matrix size
-    int local_n = N / size; // Base number of rows per rank
-    if (rank == size - 1) local_n += N % size; // Handle remainder
-    int row_offset = rank * (N / size); // Global index of first local row
+    int N = 10000;
+    int local_n = N / size; 
+    if (rank == size - 1) local_n += N % size; 
+    int row_offset = rank * (N / size); 
 
     CSRMatrix A;
     A.nrows = local_n;
@@ -113,16 +112,15 @@ int main(int argc, char** argv) {
         {"CG", cg_wrapper},
         {"BiCGStab", bicg_wrapper},
         {"GMRES", gmres_wrapper},
-        {"CA-GMRES", cagmres_wrapper} // [NEW] Added to the list
+        {"CA-GMRES", cagmres_wrapper} 
     };
 
     // Iterate over solvers
     for (auto& s : solvers) {
-        std::vector<double> x_local(local_n, 0.0); // Reset initial guess
+        std::vector<double> x_local(local_n, 0.0); 
         int iters = 0;
         double final_norm = 0.0;
         
-        // Add barrier to ensure fair timing start for each solver
         MPI_Barrier(MPI_COMM_WORLD); 
         double t0 = MPI_Wtime();
         

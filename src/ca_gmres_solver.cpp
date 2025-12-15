@@ -64,7 +64,7 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
 
     int k = 0; 
     while (k < maxit) {
-        // --- Restart ---
+        // Restart
         double inv_beta = 1.0 / beta;
         for(int i=0; i<n; ++i) V[i] = r[i] * inv_beta;
         
@@ -162,7 +162,7 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
             if (beta < stop_tol) break;
         }
 
-        // --- Solve y & Update x ---
+        // Solve y & Update x
         int effective_m = j;
         std::vector<double> y(effective_m);
         for (int i = effective_m - 1; i >= 0; --i) {

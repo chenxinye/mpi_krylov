@@ -35,12 +35,12 @@ int bicgstab_solve(const CSRMatrix& A,
     
     double epsilon = std::numeric_limits<double>::epsilon() * 1e3;
 
-    // 1. Initialize: r = b - A*x
+    // Initialize: r = b - A*x
     distributed_matvec(A, x_local, v, comm);
     for (int i = 0; i < n; ++i) r[i] = b_local[i] - v[i];
     r0 = r; // Shadow residual choice: r0 = r
 
-    // 2. Compute Norms for convergence/breakdown checks
+    // Compute Norms for convergence/breakdown checks
     double bnorm = global_norm(b_local, comm);
     double anorm = 0.0;
     for (int i = 0; i < n; ++i) {
@@ -93,8 +93,7 @@ int bicgstab_solve(const CSRMatrix& A,
             }
         }
 
-        // --- Step 2: Preconditioning (Direction) ---
-        // z = M^-1 * p
+        // Preconditioning  z = M^-1 * p
         if (M) {
             M->apply(p, z);
         } else {
@@ -122,7 +121,7 @@ int bicgstab_solve(const CSRMatrix& A,
             break;
         }
 
-        // --- Step 6: Preconditioning (Residual) ---
+        // Preconditioning (Residual)
         // y = M^-1 * s
         if (M) {
             M->apply(s, y);
@@ -152,7 +151,7 @@ int bicgstab_solve(const CSRMatrix& A,
             r[i] = s[i] - omega * t[i];
         }
 
-        // --- Step 10: Convergence Check ---
+        // Convergence Check
         r_norm = global_norm(r, comm);
         if (r_norm / bnorm < tol) {
             iter++;
