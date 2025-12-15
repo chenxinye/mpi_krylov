@@ -4,7 +4,6 @@
  * Author: Xinye Chen
  * Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
  */ 
-// implementation (naive dense block invert for demonstration)
 
 
 
@@ -36,7 +35,7 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
     if (norm_b == 0.0) norm_b = 1.0;
     double stop_tol = tol * norm_b;
 
-    // 1. 初始残差 r0 = b - A*x
+    // initialize the residual, might be further sped up by openmp
     std::vector<double> Ax(n);
     distributed_matvec(A, x, Ax, comm);
     std::vector<double> r(n);
@@ -101,11 +100,9 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
                 std::vector<double> v_in(n), w_out(n);
                 for(int i=0; i<n; ++i) v_in[i] = V[(j+step)*n + i];
                 
-                // 应用预处理
                 if(P) P->apply(v_in, z);
                 else z = v_in;
 
-                // 应用 A
                 distributed_matvec(A, z, w_out, comm);
                 
                 for(int i=0; i<n; ++i) W_temp[step*n + i] = w_out[i];
