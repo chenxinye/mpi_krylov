@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     // Construct distributed 1D Poisson matrix
-    int N = 10000;
+    int N = 2000;
     int local_n = N / size; 
     if (rank == size - 1) local_n += N % size; 
     int row_offset = rank * (N / size); 
