@@ -23,6 +23,7 @@
 #include "cg.hpp"
 #include "bicgstab.hpp"
 #include "gmres.hpp"
+#include "cagmres.hpp" // [NEW] Added CA-GMRES header
 
 // Define solver description structure
 struct SolverDesc {
@@ -38,7 +39,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     // Construct distributed 1D Poisson matrix
-    int N = 5000; // Global matrix size
+    int N = 10000; // Global matrix size
     int local_n = N / size; // Base number of rows per rank
     if (rank == size - 1) local_n += N % size; // Handle remainder
     int row_offset = rank * (N / size); // Global index of first local row
@@ -86,21 +87,33 @@ int main(int argc, char** argv) {
                          MPI_Comm comm, Preconditioner* P, int* it, double* res) {
         return cg_solve(A, b, x, maxit, tol, comm, P, it, res);
     };
+
     auto bicg_wrapper = [](const CSRMatrix& A, const std::vector<double>& b,
                            std::vector<double>& x, int maxit, double tol,
                            MPI_Comm comm, Preconditioner* P, int* it, double* res) {
         return bicgstab_solve(A, b, x, maxit, tol, comm, P, it, res);
     };
+
     auto gmres_wrapper = [](const CSRMatrix& A, const std::vector<double>& b,
                             std::vector<double>& x, int maxit, double tol,
                             MPI_Comm comm, Preconditioner* P, int* it, double* res) {
         return gmres_solve(A, b, x, 100, maxit, tol, comm, P, it, res); // Increased restart
     };
 
+    // [NEW] Wrapper for CA-GMRES
+    auto cagmres_wrapper = [](const CSRMatrix& A, const std::vector<double>& b,
+                              std::vector<double>& x, int maxit, double tol,
+                              MPI_Comm comm, Preconditioner* P, int* it, double* res) {
+        // (A, b, x, restart_size, basis_step_s, maxit, tol, comm, P, it, res)
+        // Here we use restart=100 and s=5 (basis step size)
+        return cagmres_solve(A, b, x, 100, 10, maxit, tol, comm, P, it, res);
+    };
+
     std::vector<SolverDesc> solvers = {
         {"CG", cg_wrapper},
         {"BiCGStab", bicg_wrapper},
-        {"GMRES", gmres_wrapper}
+        {"GMRES", gmres_wrapper},
+        {"CA-GMRES", cagmres_wrapper} // [NEW] Added to the list
     };
 
     // Iterate over solvers
@@ -108,7 +121,11 @@ int main(int argc, char** argv) {
         std::vector<double> x_local(local_n, 0.0); // Reset initial guess
         int iters = 0;
         double final_norm = 0.0;
+        
+        // Add barrier to ensure fair timing start for each solver
+        MPI_Barrier(MPI_COMM_WORLD); 
         double t0 = MPI_Wtime();
+        
         int status = s.solver(A, b, x_local, 5000, 1e-8, MPI_COMM_WORLD, &ilu0, &iters, &final_norm);
 
         if (status != 0 && rank == 0) {
