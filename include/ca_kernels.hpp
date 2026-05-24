@@ -9,6 +9,7 @@
 #include "matrix.hpp"
 #include "preconditioner.hpp" 
 
+// ... (保留 dense_cholesky_safe, dense_matmul, invert_upper_triangular 不变)
 
 inline bool dense_cholesky_safe(int size, std::vector<double> A, std::vector<double>& R) {
     R.assign(size * size, 0.0);
@@ -77,12 +78,8 @@ inline void invert_upper_triangular(int size, const std::vector<double>& R, std:
     }
 }
 
-// ***************************************************
-// CA Kernels
-// ***************************************************
-
 /**
- * @brief Matrix Powers Kernel with Preconditioning
+ * @brief Optimized Matrix Powers Kernel with Preconditioning
  */
 inline void ca_matrix_powers_real(const CSRMatrix& A, 
                                   const std::vector<double>& start_v, 
@@ -93,9 +90,10 @@ inline void ca_matrix_powers_real(const CSRMatrix& A,
     int n = A.local_n();
     V_block.resize((s + 1) * n);
     
+    // V_block[0] = start_v
     for(int i=0; i<n; ++i) V_block[i] = start_v[i];
     
-    std::vector<double> z(n); // M^-1 * v
+    std::vector<double> z(n);
     
     for(int k=0; k<s; ++k) {
         const double* v_curr_ptr = &V_block[k * n];
@@ -109,16 +107,20 @@ inline void ca_matrix_powers_real(const CSRMatrix& A,
             for(int i=0; i<n; ++i) z[i] = v_curr_ptr[i];
         }
 
-        // A: v_next = A * z
+        // v_next = A * z (use optimized matvec if available)
         std::vector<double> y_out(n);
-        distributed_matvec(A, z, y_out, comm);
+        if (A.halo_initialized) {
+            distributed_matvec_optimized(A, z, y_out, comm);
+        } else {
+            distributed_matvec(A, z, y_out, comm);
+        }
         
         for(int i=0; i<n; ++i) v_next_ptr[i] = y_out[i];
     }
 }
 
 /**
- * @brief CholeskyQR
+ * @brief Efficient CholeskyQR (keep original implementation)
  */
 inline void ca_cholesky_qr(std::vector<double>& V, int num_vecs, int local_n, 
                            std::vector<double>& R_out, MPI_Comm comm) {
@@ -132,15 +134,19 @@ inline void ca_cholesky_qr(std::vector<double>& V, int num_vecs, int local_n,
         for(int i=0; i<num_vecs; ++i) {
             for(int j=i; j<num_vecs; ++j) {
                 double dot = 0.0;
-                for(int k=0; k<local_n; ++k) dot += V[i*local_n + k] * V[j*local_n + k];
+                for(int k=0; k<local_n; ++k) {
+                    dot += V[i*local_n + k] * V[j*local_n + k];
+                }
                 G_local[i*num_vecs + j] = dot;
             }
         }
         for(int i=0; i<num_vecs; ++i) 
-            for(int j=0; j<i; ++j) G_local[i*num_vecs+j] = G_local[j*num_vecs+i];
+            for(int j=0; j<i; ++j) 
+                G_local[i*num_vecs+j] = G_local[j*num_vecs+i];
 
         std::vector<double> G_global(num_vecs * num_vecs);
-        MPI_Allreduce(G_local.data(), G_global.data(), num_vecs * num_vecs, MPI_DOUBLE, MPI_SUM, comm);
+        MPI_Allreduce(G_local.data(), G_global.data(), num_vecs * num_vecs, 
+                     MPI_DOUBLE, MPI_SUM, comm);
 
         if (!dense_cholesky_safe(num_vecs, G_global, R1)) {
             R1.assign(num_vecs*num_vecs, 0.0);
@@ -162,21 +168,25 @@ inline void ca_cholesky_qr(std::vector<double>& V, int num_vecs, int local_n,
         }
     }
 
-    // --- Pass 2 ---
+    // --- Pass 2 (for stability) ---
     {
         std::vector<double> G_local(num_vecs * num_vecs, 0.0);
         for(int i=0; i<num_vecs; ++i) {
             for(int j=i; j<num_vecs; ++j) {
                 double dot = 0.0;
-                for(int k=0; k<local_n; ++k) dot += V[i*local_n + k] * V[j*local_n + k];
+                for(int k=0; k<local_n; ++k) {
+                    dot += V[i*local_n + k] * V[j*local_n + k];
+                }
                 G_local[i*num_vecs + j] = dot;
             }
         }
         for(int i=0; i<num_vecs; ++i) 
-            for(int j=0; j<i; ++j) G_local[i*num_vecs+j] = G_local[j*num_vecs+i];
+            for(int j=0; j<i; ++j) 
+                G_local[i*num_vecs+j] = G_local[j*num_vecs+i];
 
         std::vector<double> G_global(num_vecs * num_vecs);
-        MPI_Allreduce(G_local.data(), G_global.data(), num_vecs * num_vecs, MPI_DOUBLE, MPI_SUM, comm);
+        MPI_Allreduce(G_local.data(), G_global.data(), num_vecs * num_vecs, 
+                     MPI_DOUBLE, MPI_SUM, comm);
 
         if (!dense_cholesky_safe(num_vecs, G_global, R2)) {
             R2.assign(num_vecs*num_vecs, 0.0);

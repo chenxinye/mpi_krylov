@@ -3,9 +3,9 @@
  * 
  * Author: Xinye Chen
  * Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
+ * 
+ * Optimized CA-GMRES with efficient communication pattern
  */ 
-
-
 
 #include <vector>
 #include <cmath>
@@ -15,10 +15,6 @@
 #include "preconditioner.hpp"
 #include "cagmres.hpp"
 #include "ca_kernels.hpp"
-
-// ***************************************************
-// Real CA-GMRES (Preconditioned)
-// ***************************************************
 
 int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<double>& x,
                   int restart, int s, int maxit, double tol,
@@ -35,9 +31,14 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
     if (norm_b == 0.0) norm_b = 1.0;
     double stop_tol = tol * norm_b;
 
-    // initialize the residual, might be further sped up by openmp
+    // Use optimized matvec if available
     std::vector<double> Ax(n);
-    distributed_matvec(A, x, Ax, comm);
+    if (A.halo_initialized) {
+        distributed_matvec_optimized(A, x, Ax, comm);
+    } else {
+        distributed_matvec(A, x, Ax, comm);
+    }
+    
     std::vector<double> r(n);
     for(int i=0; i<n; ++i) r[i] = b[i] - Ax[i];
 
@@ -80,10 +81,10 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
 
             ca_matrix_powers_real(A, start_v, s, V_block, P, comm);
 
-            // Block Orthogonalization
+            // Use original efficient Cholesky QR
             ca_cholesky_qr(V_block, s + 1, n, R_block, comm);
 
-            // global V
+            // Copy orthogonalized vectors back to V
             for(int step = 1; step <= s; ++step) {
                 if (j + step > m) break; 
                 double* dst = &V[(j + step) * n];
@@ -93,6 +94,7 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
 
             int current_s = (j + s > m) ? (m - j) : s;
             
+            // Compute W = A * M^{-1} * V block (single communication phase)
             std::vector<double> W_temp(current_s * n);
             std::vector<double> z(n); 
 
@@ -103,12 +105,17 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
                 if(P) P->apply(v_in, z);
                 else z = v_in;
 
-                distributed_matvec(A, z, w_out, comm);
+                // Use optimized matvec
+                if (A.halo_initialized) {
+                    distributed_matvec_optimized(A, z, w_out, comm);
+                } else {
+                    distributed_matvec(A, z, w_out, comm);
+                }
                 
                 for(int i=0; i<n; ++i) W_temp[step*n + i] = w_out[i];
             }
 
-            // H_small = V^T * W
+            // Compute Hessenberg matrix: H = V^T * W (single Allreduce)
             int h_rows = j + current_s + 1;
             int h_cols = current_s;
             std::vector<double> H_local(h_rows * h_cols, 0.0);
@@ -116,38 +123,54 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
             for(int c=0; c < h_cols; ++c) {
                 for(int r_idx=0; r_idx < h_rows; ++r_idx) {
                     double dot = 0.0;
-                    for(int i=0; i<n; ++i) dot += V[r_idx*n + i] * W_temp[c*n + i];
+                    for(int i=0; i<n; ++i) {
+                        dot += V[r_idx*n + i] * W_temp[c*n + i];
+                    }
                     H_local[r_idx*h_cols + c] = dot;
                 }
             }
+            
             std::vector<double> H_global(h_rows * h_cols);
-            MPI_Allreduce(H_local.data(), H_global.data(), h_rows*h_cols, MPI_DOUBLE, MPI_SUM, comm);
+            MPI_Allreduce(H_local.data(), H_global.data(), h_rows*h_cols, 
+                         MPI_DOUBLE, MPI_SUM, comm);
 
+            // Store in full H matrix
             for(int c=0; c < h_cols; ++c) {
                 for(int r_idx=0; r_idx < h_rows; ++r_idx) {
-                     if (r_idx < m + 1 && (j + c) < m) {
+                    if (r_idx < m + 1 && (j + c) < m) {
                         H[r_idx * m + (j + c)] = H_global[r_idx * h_cols + c];
-                     }
+                    }
                 }
             }
 
-            // Givens Rotation (to be replaced)
+            // Apply Givens rotations to new columns
             for (int step = 0; step < current_s; ++step) {
                 int col = j + step;
+                
+                // Apply previous rotations
                 for (int i = 0; i < col; ++i) {
                     double temp = cs[i] * H[i*m + col] + sn[i] * H[(i + 1)*m + col];
                     H[(i + 1)*m + col] = -sn[i] * H[i*m + col] + cs[i] * H[(i + 1)*m + col];
                     H[i*m + col] = temp;
                 }
+                
+                // Compute new rotation
                 double h1 = H[col*m + col];
                 double h2 = H[(col + 1)*m + col];
                 double r_sq = std::sqrt(h1*h1 + h2*h2);
-                cs[col] = h1 / r_sq;
-                sn[col] = h2 / r_sq;
+                
+                if (r_sq > 1e-16) {
+                    cs[col] = h1 / r_sq;
+                    sn[col] = h2 / r_sq;
+                } else {
+                    cs[col] = 1.0;
+                    sn[col] = 0.0;
+                }
 
                 H[col*m + col] = r_sq;
                 H[(col + 1)*m + col] = 0.0;
 
+                // Apply to RHS
                 g[col + 1] = -sn[col] * g[col];
                 g[col]     = cs[col] * g[col];
             }
@@ -159,23 +182,27 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
             if (beta < stop_tol) break;
         }
 
-        // Solve y & Update x
+        // Solve triangular system
         int effective_m = j;
         std::vector<double> y(effective_m);
         for (int i = effective_m - 1; i >= 0; --i) {
             double sum = 0.0;
-            for (int l = i + 1; l < effective_m; ++l) sum += H[i*m + l] * y[l];
+            for (int l = i + 1; l < effective_m; ++l) {
+                sum += H[i*m + l] * y[l];
+            }
             y[i] = (g[i] - sum) / H[i*m + i];
         }
 
+        // Update solution: x += M^{-1} * V * y
         std::vector<double> u(n, 0.0);
         for (int row = 0; row < n; ++row) {
-             double sum = 0.0;
-             for (int i = 0; i < effective_m; ++i) sum += V[i*n + row] * y[i];
-             u[row] = sum;
+            double sum = 0.0;
+            for (int i = 0; i < effective_m; ++i) {
+                sum += V[i*n + row] * y[i];
+            }
+            u[row] = sum;
         }
 
-        // last update to the right preconditioner: x += P^{-1} * u
         std::vector<double> real_update(n);
         if (P) {
             P->apply(u, real_update);
@@ -185,7 +212,13 @@ int cagmres_solve(const CSRMatrix& A, const std::vector<double>& b, std::vector<
 
         for(int i=0; i<n; ++i) x[i] += real_update[i];
 
-        distributed_matvec(A, x, Ax, comm);
+        // Compute residual
+        if (A.halo_initialized) {
+            distributed_matvec_optimized(A, x, Ax, comm);
+        } else {
+            distributed_matvec(A, x, Ax, comm);
+        }
+        
         for(int i=0; i<n; ++i) r[i] = b[i] - Ax[i];
         beta = global_norm(r, comm);
         

@@ -1,16 +1,15 @@
 /*
  * MPI Krylov Solver Project - Optimized Matrix Operations
- * 
- * Author: Xinye Chen (Enhanced with Communication Optimization)
- * Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
+ * FIXED: Deadlock-free halo exchange initialization
  */
 
 #include "matrix.hpp"
 #include <algorithm>
 #include <set>
 #include <cmath>
+#include <iostream>
 
-// Initialize halo exchange pattern by analyzing matrix sparsity
+// Initialize halo exchange pattern - COMPLETELY REWRITTEN
 void initialize_halo_exchange(CSRMatrix &A, MPI_Comm comm) {
     if (A.halo_initialized) return;
 
@@ -21,7 +20,7 @@ void initialize_halo_exchange(CSRMatrix &A, MPI_Comm comm) {
     int local_start = A.row_offset;
     int local_end = A.row_offset + A.nrows;
 
-    // Step 1: Find all non-local column indices needed
+    // Step 1: Find non-local columns
     std::set<int> halo_set;
     for (int i = 0; i < A.nrows; ++i) {
         for (int j = A.row_ptr[i]; j < A.row_ptr[i + 1]; ++j) {
@@ -36,26 +35,21 @@ void initialize_halo_exchange(CSRMatrix &A, MPI_Comm comm) {
     int halo_size = A.halo_indices.size();
     A.halo_data.resize(halo_size);
 
-    // Step 2: Build halo_to_local mapping
     for (int i = 0; i < halo_size; ++i) {
         A.halo_to_local[A.halo_indices[i]] = i;
     }
 
-    // Step 3: Determine which rank owns each halo index
-    std::vector<int> rows_per_rank(size);
+    // Step 2: Determine row distribution
+    std::vector<int> rank_offsets(size + 1, 0);
     int base_rows = A.ncols / size;
     int remainder = A.ncols % size;
     
     for (int r = 0; r < size; ++r) {
-        rows_per_rank[r] = base_rows + (r < remainder ? 1 : 0);
+        int rows_in_rank = base_rows + (r < remainder ? 1 : 0);
+        rank_offsets[r + 1] = rank_offsets[r] + rows_in_rank;
     }
 
-    std::vector<int> rank_offsets(size + 1, 0);
-    for (int r = 0; r < size; ++r) {
-        rank_offsets[r + 1] = rank_offsets[r] + rows_per_rank[r];
-    }
-
-    // Step 4: Build recv_map (which indices to receive from which rank)
+    // Step 3: Build recv_map
     for (int global_idx : A.halo_indices) {
         for (int r = 0; r < size; ++r) {
             if (global_idx >= rank_offsets[r] && global_idx < rank_offsets[r + 1]) {
@@ -65,47 +59,67 @@ void initialize_halo_exchange(CSRMatrix &A, MPI_Comm comm) {
         }
     }
 
-    // Step 5: Exchange information to build send_map
+    // Step 4: Exchange to build send_map - FIXED DEADLOCK
+    // Use MPI_Alltoall pattern to avoid deadlock
+    
+    // First, exchange counts
+    std::vector<int> send_counts(size, 0);
+    std::vector<int> recv_counts(size, 0);
+    
     for (int r = 0; r < size; ++r) {
-        int send_count = (r == rank) ? 0 : A.recv_map[r].size();
-        int recv_count = 0;
-
-        // Send how many indices we need from rank r
-        MPI_Request req[2];
+        send_counts[r] = (r == rank) ? 0 : A.recv_map[r].size();
+    }
+    
+    MPI_Alltoall(send_counts.data(), 1, MPI_INT,
+                 recv_counts.data(), 1, MPI_INT, comm);
+    
+    // Prepare send buffers
+    std::vector<int> send_displs(size + 1, 0);
+    std::vector<int> recv_displs(size + 1, 0);
+    
+    for (int r = 0; r < size; ++r) {
+        send_displs[r + 1] = send_displs[r] + send_counts[r];
+        recv_displs[r + 1] = recv_displs[r] + recv_counts[r];
+    }
+    
+    int total_send = send_displs[size];
+    int total_recv = recv_displs[size];
+    
+    std::vector<int> send_buffer(total_send);
+    std::vector<int> recv_buffer(total_recv);
+    
+    // Pack send buffer
+    int offset = 0;
+    for (int r = 0; r < size; ++r) {
         if (r != rank) {
-            MPI_Isend(&send_count, 1, MPI_INT, r, 0, comm, &req[0]);
-        }
-        
-        // Receive how many indices rank r needs from us
-        for (int src = 0; src < size; ++src) {
-            if (src != rank) {
-                MPI_Recv(&recv_count, 1, MPI_INT, src, 0, comm, MPI_STATUS_IGNORE);
-                
-                if (recv_count > 0) {
-                    std::vector<int> requested_indices(recv_count);
-                    MPI_Recv(requested_indices.data(), recv_count, MPI_INT, src, 1, comm, MPI_STATUS_IGNORE);
-                    
-                    // Convert global indices to local indices
-                    for (int global_idx : requested_indices) {
-                        int local_idx = global_idx - local_start;
-                        if (local_idx >= 0 && local_idx < A.nrows) {
-                            A.send_map[src].push_back(local_idx);
-                        }
-                    }
-                }
+            for (int idx : A.recv_map[r]) {
+                send_buffer[offset++] = idx;
             }
         }
-
-        if (r != rank && send_count > 0) {
-            MPI_Wait(&req[0], MPI_STATUS_IGNORE);
-            MPI_Send(A.recv_map[r].data(), send_count, MPI_INT, r, 1, comm);
+    }
+    
+    // Exchange all data at once
+    MPI_Alltoallv(send_buffer.data(), send_counts.data(), send_displs.data(), MPI_INT,
+                  recv_buffer.data(), recv_counts.data(), recv_displs.data(), MPI_INT, comm);
+    
+    // Unpack and build send_map
+    offset = 0;
+    for (int r = 0; r < size; ++r) {
+        if (r != rank && recv_counts[r] > 0) {
+            for (int i = 0; i < recv_counts[r]; ++i) {
+                int global_idx = recv_buffer[offset++];
+                int local_idx = global_idx - local_start;
+                if (local_idx >= 0 && local_idx < A.nrows) {
+                    A.send_map[r].push_back(local_idx);
+                }
+            }
         }
     }
 
     A.halo_initialized = true;
 }
 
-// Optimized distributed matvec with halo exchange
+// Optimized distributed matvec
 void distributed_matvec_optimized(const CSRMatrix &A, const std::vector<double> &x_local,
                                    std::vector<double> &y_local, MPI_Comm comm) {
     int rank, size;
@@ -113,47 +127,49 @@ void distributed_matvec_optimized(const CSRMatrix &A, const std::vector<double> 
     MPI_Comm_size(comm, &size);
 
     if (!A.halo_initialized) {
-        const_cast<CSRMatrix&>(A).halo_initialized = false;
-        initialize_halo_exchange(const_cast<CSRMatrix&>(A), comm);
+        distributed_matvec(A, x_local, y_local, comm);
+        return;
     }
 
     y_local.resize(A.nrows);
     std::fill(y_local.begin(), y_local.end(), 0.0);
 
-    // Step 1: Non-blocking send/recv for halo exchange
-    std::vector<MPI_Request> requests;
-    std::vector<std::vector<double>> send_buffers;
+    // Use MPI_Alltoallv for symmetric exchange
+    std::vector<int> send_counts(size, 0);
+    std::vector<int> recv_counts(size, 0);
+    std::vector<int> send_displs(size + 1, 0);
+    std::vector<int> recv_displs(size + 1, 0);
 
     for (auto &entry : A.send_map) {
-        int dest_rank = entry.first;
-        const auto &local_indices = entry.second;
-        
-        send_buffers.emplace_back(local_indices.size());
-        for (size_t i = 0; i < local_indices.size(); ++i) {
-            send_buffers.back()[i] = x_local[local_indices[i]];
-        }
-
-        MPI_Request req;
-        MPI_Isend(send_buffers.back().data(), local_indices.size(), MPI_DOUBLE, 
-                  dest_rank, 0, comm, &req);
-        requests.push_back(req);
+        send_counts[entry.first] = entry.second.size();
     }
-
+    
     for (auto &entry : A.recv_map) {
-        int src_rank = entry.first;
-        const auto &global_indices = entry.second;
-        
-        std::vector<double> recv_buffer(global_indices.size());
-        MPI_Request req;
-        MPI_Irecv(recv_buffer.data(), global_indices.size(), MPI_DOUBLE,
-                  src_rank, 0, comm, &req);
-        requests.push_back(req);
-
-        // Store buffer for later use (need to persist until Waitall)
-        send_buffers.push_back(std::move(recv_buffer));
+        recv_counts[entry.first] = entry.second.size();
+    }
+    
+    for (int r = 0; r < size; ++r) {
+        send_displs[r + 1] = send_displs[r] + send_counts[r];
+        recv_displs[r + 1] = recv_displs[r] + recv_counts[r];
+    }
+    
+    int total_send = send_displs[size];
+    int total_recv = recv_displs[size];
+    
+    std::vector<double> send_buffer(total_send);
+    std::vector<double> recv_buffer(total_recv);
+    
+    // Pack send data
+    int offset = 0;
+    for (int r = 0; r < size; ++r) {
+        if (A.send_map.count(r)) {
+            for (int local_idx : A.send_map.at(r)) {
+                send_buffer[offset++] = x_local[local_idx];
+            }
+        }
     }
 
-    // Step 2: Compute local part while communication happens
+    // Compute local part during communication setup
     int local_start = A.row_offset;
     int local_end = A.row_offset + A.nrows;
 
@@ -168,22 +184,22 @@ void distributed_matvec_optimized(const CSRMatrix &A, const std::vector<double> 
         y_local[i] = sum;
     }
 
-    // Step 3: Wait for all communications to complete
-    MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
+    // Exchange halo data
+    MPI_Alltoallv(send_buffer.data(), send_counts.data(), send_displs.data(), MPI_DOUBLE,
+                  recv_buffer.data(), recv_counts.data(), recv_displs.data(), MPI_DOUBLE, comm);
 
-    // Step 4: Unpack halo data
-    size_t recv_buf_idx = A.send_map.size();
-    for (auto &entry : A.recv_map) {
-        const auto &global_indices = entry.second;
-        const auto &recv_buffer = send_buffers[recv_buf_idx++];
-        
-        for (size_t i = 0; i < global_indices.size(); ++i) {
-            int halo_pos = A.halo_to_local.at(global_indices[i]);
-            const_cast<CSRMatrix&>(A).halo_data[halo_pos] = recv_buffer[i];
+    // Unpack and add non-local contributions
+    offset = 0;
+    for (int r = 0; r < size; ++r) {
+        if (A.recv_map.count(r)) {
+            const auto &global_indices = A.recv_map.at(r);
+            for (size_t i = 0; i < global_indices.size(); ++i) {
+                int halo_pos = A.halo_to_local.at(global_indices[i]);
+                const_cast<CSRMatrix&>(A).halo_data[halo_pos] = recv_buffer[offset++];
+            }
         }
     }
 
-    // Step 5: Add non-local contributions
     for (int i = 0; i < A.nrows; ++i) {
         for (int j = A.row_ptr[i]; j < A.row_ptr[i + 1]; ++j) {
             int col = A.col_idx[j];
@@ -195,7 +211,7 @@ void distributed_matvec_optimized(const CSRMatrix &A, const std::vector<double> 
     }
 }
 
-// Original simple version (for compatibility and small problems)
+// Original simple version
 void distributed_matvec(const CSRMatrix &A, const std::vector<double> &x_local,
                         std::vector<double> &y_local, MPI_Comm comm) {
     int rank, size;
@@ -226,7 +242,6 @@ void distributed_matvec(const CSRMatrix &A, const std::vector<double> &x_local,
     }
 }
 
-// Global dot product
 double global_dot(const std::vector<double> &a_local, const std::vector<double> &b_local, MPI_Comm comm) {
     double local_sum = 0.0;
     int n = a_local.size();
@@ -238,7 +253,6 @@ double global_dot(const std::vector<double> &a_local, const std::vector<double> 
     return global_sum;
 }
 
-// Global norm
 double global_norm(const std::vector<double> &a_local, MPI_Comm comm) {
     double local_sum = 0.0;
     for (double val : a_local) {
@@ -249,7 +263,6 @@ double global_norm(const std::vector<double> &a_local, MPI_Comm comm) {
     return std::sqrt(global_sum);
 }
 
-// Multi-dot for reduced communication (used in CA methods)
 void global_multi_dot(const std::vector<std::vector<double>> &vecs_a,
                       const std::vector<std::vector<double>> &vecs_b,
                       std::vector<double> &results, MPI_Comm comm) {
