@@ -2,6 +2,10 @@
  * MPI Krylov Solver Project
  * 
  * CA-CG: Simplified robust version
+ * 
+ * Author: Xinye Chen
+ * Affiliation: Postdoctoral Researcher, Sorbonne University, LIP6, CNRS
+ *
  * Performs standard CG but groups communications every s iterations
  */
 
@@ -25,7 +29,6 @@ int ca_cg_solve(const CSRMatrix& A,
 
     int n = A.local_n();
 
-    // Standard CG with periodic residual replacement
     std::vector<double> r(n), Ax(n), z(n), p(n), Ap(n);
     
     // r = b - A*x
@@ -60,21 +63,13 @@ int ca_cg_solve(const CSRMatrix& A,
 
     int total_iters = 0;
 
-    // Main CG loop with s-step residual replacement
     while (total_iters < max_iter) {
         
-        // Standard CG step
-        std::vector<double> temp(n);
-        if (M) {
-            M->apply(p, temp);
-        } else {
-            temp = p;
-        }
-        
+        // Ap = A * p (NOT A * M^{-1} * p, preconditioner is in z)
         if (A.halo_initialized) {
-            distributed_matvec_optimized(A, temp, Ap, comm);
+            distributed_matvec_optimized(A, p, Ap, comm);
         } else {
-            distributed_matvec(A, temp, Ap, comm);
+            distributed_matvec(A, p, Ap, comm);
         }
         
         double pAp = global_dot(p, Ap, comm);
@@ -85,13 +80,8 @@ int ca_cg_solve(const CSRMatrix& A,
         
         double alpha = rz / pAp;
         
-        // x = x + alpha * p
         for (int i = 0; i < n; ++i) {
             x[i] += alpha * p[i];
-        }
-        
-        // r = r - alpha * Ap
-        for (int i = 0; i < n; ++i) {
             r[i] -= alpha * Ap[i];
         }
         
@@ -107,7 +97,6 @@ int ca_cg_solve(const CSRMatrix& A,
         
         total_iters++;
         
-        // Check convergence
         if (res_norm / bnorm < tol) {
             if (out_iters) *out_iters = total_iters;
             if (out_final_res_norm) *out_final_res_norm = res_norm;
@@ -116,14 +105,13 @@ int ca_cg_solve(const CSRMatrix& A,
         
         double beta = rz_new / rz;
         
-        // p = z + beta * p
         for (int i = 0; i < n; ++i) {
             p[i] = z[i] + beta * p[i];
         }
         
         rz = rz_new;
         
-        // Residual replacement every s iterations (the "CA" part)
+        // Residual replacement every s iterations
         if (total_iters % s == 0) {
             if (A.halo_initialized) {
                 distributed_matvec_optimized(A, x, Ax, comm);
@@ -143,7 +131,6 @@ int ca_cg_solve(const CSRMatrix& A,
                 return 0;
             }
             
-            // Recompute z and p
             if (M) {
                 M->apply(r, z);
             } else {

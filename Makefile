@@ -22,7 +22,7 @@ OBJ_DIR = obj
 INC_DIR = include
 
 # Complete source file list
-SOURCES = $(SRC_DIR)/main.cpp \
+SOURCES = $(SRC_DIR)/main_simple.cpp \
           $(SRC_DIR)/matrix.cpp \
           $(SRC_DIR)/utils.cpp \
           $(SRC_DIR)/cg.cpp \
