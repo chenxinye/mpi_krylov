@@ -1,12 +1,41 @@
 # mpi_krylov: Krylov Solver using MPI
 
-This project provides parallel implementations of Krylov subspace solvers for sparse linear systems using MPI in C++. The solvers include Conjugate Gradient (CG), BiCGStab, GMRES, and communication avoid GMRES, with optional preconditioners such as Jacobi, Block Jacobi, and ILU0. 
+This project provides parallel implementations of Krylov subspace solvers for sparse linear systems using MPI. The solvers include Conjugate Gradient (CG), BiCGStab, GMRES, and communication avoid GMRES, with optional preconditioners such as Jacobi, Block Jacobi, and ILU0. 
+
+
+## 🚀 Features
+
+### Communication-Avoiding Methods
+- **CA-CG**: s-step Conjugate Gradient with reduced global synchronizations
+- **CA-BiCGStab**: s-step variant for non-symmetric systems
+- **CA-GMRES**: Improved with TSQR orthogonalization
+
+### Pipelined Methods
+- **Pipelined GMRES**: Overlaps communication with computation
+
+### Advanced Preconditioners
+- **Additive Schwarz (ASM)**: Parallel-friendly domain decomposition
+- **Polynomial Preconditioner**: Communication-free (Neumann/Chebyshev)
+- **ILU(0)**, **Jacobi**, **Block Jacobi** (existing)
+
+### Optimized MPI Communication
+- **Halo Exchange**: Replaces expensive Allgatherv
+- **Non-blocking Communication**: MPI_Isend/Irecv for overlap
+- **Multi-dot Reduction**: Single Allreduce for multiple dot products
+
+---
 
 
 
 ## Setup and Installation
+### Prerequisites
 
-Ensure you have a C++17 compatible compiler and an MPI implementation installed, such as OpenMPI or MPICH. On most systems, MPI can be installed via the package manager.  For example, in mac, we use ``brew install open-mpi``.
+Ensure you have a C++17 compatible compiler and an MPI implementation installed, such as OpenMPI or MPICH. 
+
+- C++17 compiler (g++ 7+ or clang++ 5+)
+- MPI implementation (OpenMPI 3.0+ or MPICH 3.2+)
+
+On most systems, MPI can be installed via the package manager.  For example, in mac, we use ``brew install open-mpi``.
 
 To compile the project, navigate to the project root directory and run:
 
@@ -18,6 +47,7 @@ This will build the executable named solver. To clean compiled object files and 
 
 ```bash
 make clean
+make -j4
 ```
 
 ## Running the Program
@@ -43,3 +73,6 @@ Solver=CG iters=6 final_res=8.52445e-11 time=0.027062 s
 Solver=BiCGStab iters=6 final_res=4.13439e-07 time=0.027559 s
 Solver=GMRES iters=6 final_res=8.94959e-08 time=0.017409 s
 ```
+
+To run more complicated tests, modify the ``Makefile`` to replace the ``main_simple.cpp`` to ``main.cpp``. 
+

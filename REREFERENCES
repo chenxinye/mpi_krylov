@@ -1,0 +1,248 @@
+================================================================================
+MPI Krylov Solver - References
+================================================================================
+
+This document contains references for all numerical methods implemented in our
+mpi_krylov solver library.
+
+================================================================================
+1. CLASSICAL KRYLOV METHODS
+================================================================================
+
+[1] Hestenes, M. R., & Stiefel, E. (1952). Methods of conjugate gradients for 
+    solving linear systems. Journal of Research of the National Bureau of 
+    Standards, 49(6), 409-436.
+    DOI: 10.6028/jres.049.044
+    (Conjugate Gradient - CG)
+
+[2] Saad, Y., & Schultz, M. H. (1986). GMRES: A generalized minimal residual 
+    algorithm for solving nonsymmetric linear systems. SIAM Journal on 
+    Scientific and Statistical Computing, 7(3), 856-869.
+    DOI: 10.1137/0907058
+    (Generalized Minimal Residual - GMRES)
+
+[3] Van der Vorst, H. A. (1992). Bi-CGSTAB: A fast and smoothly converging 
+    variant of Bi-CG for the solution of nonsymmetric linear systems. SIAM 
+    Journal on Scientific and Statistical Computing, 13(2), 631-644.
+    DOI: 10.1137/0913035
+    (Biconjugate Gradient Stabilized - BiCGStab)
+
+[4] Saad, Y. (2003). Iterative methods for sparse linear systems (2nd ed.). 
+    SIAM.
+    DOI: 10.1137/1.9780898718003
+    ISBN: 978-0-898715-34-7
+    (Comprehensive reference for iterative methods)
+
+================================================================================
+2. COMMUNICATION-AVOIDING METHODS
+================================================================================
+
+[5] Hoemmen, M. F. (2010). Communication-avoiding Krylov subspace methods. 
+    PhD thesis, University of California, Berkeley.
+    Available: https://www2.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-37.html
+    (Foundation for CA-Krylov methods, CA-GMRES, CA-CG)
+
+[6] Carson, E., & Demmel, J. (2013). A residual replacement strategy for 
+    improving the maximum attainable accuracy of s-step Krylov subspace 
+    methods. SIAM Journal on Matrix Analysis and Applications, 35(1), 22-43.
+    DOI: 10.1137/130904105
+    (Residual replacement in s-step methods)
+
+[7] Carson, E., &Demmel, J. (2015). Accuracy of the s-step Lanczos method 
+    for the symmetric eigenproblem in finite precision. SIAM Journal on 
+    Matrix Analysis and Applications, 36(2), 793-819.
+    DOI: 10.1137/140989577
+    (Numerical stability analysis of s-step methods)
+
+[8] Chronopoulos, A. T., & Gear, C. W. (1989). s-step iterative methods for 
+    symmetric linear systems. Journal of Computational and Applied Mathematics, 
+    25(2), 153-168.
+    DOI: 10.1016/0377-0427(89)90045-9
+    (Early work on s-step methods)
+
+[9] Hoemmen, M., & Heroux, M. (2011). Fault tolerant iterative methods via 
+    selective reliability. Proceedings of the International Conference for High 
+    Performance Computing, Networking, Storage and Analysis (SC11).
+    DOI: 10.1145/2063384.2063415
+    (Fault tolerance aspects of CA methods)
+
+================================================================================
+3. PIPELINED METHODS
+================================================================================
+
+[10] Ghysels, P., & Vanroose, W. (2014). Hiding global synchronization latency 
+     in the preconditioned Conjugate Gradient algorithm. Parallel Computing, 
+     40(7), 224-238.
+     DOI: 10.1016/j.parco.2013.06.001
+     (Pipelined CG)
+
+[11] Ghysels, P., Ashby, T. J., Meerbergen, K., & Vanroose, W. (2013). Hiding 
+     global communication latency in the GMRES algorithm on massively parallel 
+     machines. SIAM Journal on Scientific Computing, 35(1), C48-C71.
+     DOI: 10.1137/12086563X
+     (Pipelined GMRES)
+
+[12] Cools, S., & Vanroose, W. (2018). The communication-hiding pipelined 
+     BiCGstab method for the parallel solution of large unsymmetric linear 
+     systems. Parallel Computing, 65, 1-20.
+     DOI: 10.1016/j.parco.2017.04.005
+     (Pipelined BiCGStab)
+
+================================================================================
+4. PRECONDITIONERS
+================================================================================
+
+[13] Meijerink, J. A., & van der Vorst, H. A. (1977). An iterative solution 
+     method for linear systems of which the coefficient matrix is a symmetric 
+     M-matrix. Mathematics of Computation, 31(137), 148-162.
+     DOI: 10.2307/2005786
+     (Incomplete LU - ILU(0))
+
+[14] Saad, Y. (1985). Practical use of polynomial preconditionings for the 
+     conjugate gradient method. SIAM Journal on Scientific and Statistical 
+     Computing, 6(4), 865-881.
+     DOI: 10.1137/0906059
+     (Polynomial preconditioners)
+
+[15] Smith, B. F., Bjørstad, P. E., & Gropp, W. D. (1996). Domain 
+     decomposition: Parallel multilevel methods for elliptic partial 
+     differential equations. Cambridge University Press.
+     ISBN: 978-0521495899
+     (Additive Schwarz Method - ASM, domain decomposition)
+
+[16] Grote, M. J., & Huckle, T. (1997). Parallel preconditioning with sparse 
+     approximate inverses. SIAM Journal on Scientific Computing, 18(3), 
+     838-853.
+     DOI: 10.1137/S1064827594276552
+     (Sparse Approximate Inverse - SPAI)
+
+[17] Benzi, M. (2002). Preconditioning techniques for large linear systems: 
+     A survey. Journal of Computational Physics, 182(2), 418-477.
+     DOI: 10.1006/jcph.2002.7176
+     (Comprehensive survey of preconditioners)
+
+[18] Saad, Y., & van der Vorst, H. A. (2000). Iterative solution of linear 
+     systems in the 20th century. Journal of Computational and Applied 
+     Mathematics, 123(1-2), 1-33.
+     DOI: 10.1016/S0377-0427(00)00412-X
+     (Historical survey of iterative methods and preconditioning)
+
+================================================================================
+5. PARALLEL ALGORITHMS AND MPI
+================================================================================
+
+[19] Gropp, W., Lusk, E., & Skjellum, A. (1999). Using MPI: Portable parallel 
+     programming with the message-passing interface (2nd ed.). MIT Press.
+     ISBN: 978-0262571326
+     (MPI programming reference)
+
+[20] Demmel, J., Hoemmen, M., Mohiyuddin, M., & Yelick, K. (2008). Avoiding 
+     communication in sparse matrix computations. IEEE International Parallel 
+     and Distributed Processing Symposium (IPDPS 2008), 1-12.
+     DOI: 10.1109/IPDPS.2008.4536305
+     (Communication-avoiding sparse matrix algorithms)
+
+[21] Ballard, G., Demmel, J., Holtz, O., & Schwartz, O. (2011). Minimizing 
+     communication in numerical linear algebra. SIAM Journal on Matrix Analysis 
+     and Applications, 32(3), 866-901.
+     DOI: 10.1137/090769156
+     (Theory of communication lower bounds)
+
+[22] Dongarra, J., Huss-Lederman, S., Otto, S., Snir, M., & Walker, D. (1996). 
+     MPI: The Complete Reference, Volume 2 - The MPI-2 Extensions. MIT Press.
+     ISBN: 978-0262571234
+     (MPI-2 reference for advanced features)
+
+================================================================================
+6. NUMERICAL STABILITY AND CONVERGENCE
+================================================================================
+
+[23] Greenbaum, A. (1997). Iterative methods for solving linear systems. SIAM.
+     DOI: 10.1137/1.9781611970937
+     ISBN: 978-0-898713-96-2
+     (Theoretical foundations of iterative methods)
+
+[24] Carson, E., Rozložník, M., Strakoš, Z., Tichý, P., & Tůma, M. (2020). 
+     The numerical stability analysis of pipelined conjugate gradient methods: 
+     Historical context and methodology. SIAM Journal on Scientific Computing, 
+     42(5), A3549-A3580.
+     DOI: 10.1137/20M1326416
+     (Stability analysis of pipelined methods)
+
+[25] Paige, C. C., & Saunders, M. A. (1975). Solution of sparse indefinite 
+     systems of linear equations. SIAM Journal on Numerical Analysis, 12(4), 
+     617-629.
+     DOI: 10.1137/0712047
+     (MINRES and convergence theory)
+
+[26] Liesen, J., & Strakoš, Z. (2013). Krylov subspace methods: Principles 
+     and analysis. Oxford University Press.
+     DOI: 10.1093/acprof:oso/9780199655410.001.0001
+     ISBN: 978-0199655410
+     (Modern comprehensive analysis of Krylov methods)
+
+================================================================================
+7. IMPLEMENTATION AND OPTIMIZATION
+================================================================================
+
+[27] Williams, S., Waterman, A., & Patterson, D. (2009). Roofline: An insightful 
+     visual performance model for multicore architectures. Communications of 
+     the ACM, 52(4), 65-76.
+     DOI: 10.1145/1498765.1498785
+     (Performance modeling)
+
+[28] Heroux, M. A., et al. (2005). An overview of the Trilinos project. ACM 
+     Transactions on Mathematical Software, 31(3), 397-423.
+     DOI: 10.1145/1089014.1089021
+     (Reference implementation in Trilinos framework)
+
+[29] Balay, S., et al. (2021). PETSc users manual. Argonne National Laboratory 
+     Technical Report ANL-21/39 - Revision 3.16.
+     Available: https://petsc.org/release/docs/manual/
+     (PETSc library reference implementation)
+
+[30] Blackford, L. S., et al. (1997). ScaLAPACK users' guide. SIAM.
+     DOI: 10.1137/1.9780898719642
+     ISBN: 978-0-898713-97-8
+     (Parallel dense linear algebra reference)
+
+================================================================================
+8. HIGH-PERFORMANCE COMPUTING CONTEXT
+================================================================================
+
+[31] Dongarra, J., & Heroux, M. A. (2013). Toward a new metric for ranking 
+     high performance computing systems. Sandia National Laboratories Technical 
+     Report SAND2013-4744.
+     (HPC benchmarking and evaluation)
+
+[32] Asanovic, K., et al. (2006). The landscape of parallel computing research: 
+     A view from Berkeley. University of California, Berkeley Technical Report 
+     UCB/EECS-2006-183.
+     Available: https://www2.eecs.berkeley.edu/Pubs/TechRpts/2006/EECS-2006-183.html
+     (Parallel computing challenges and opportunities)
+
+[33] Top500 Supercomputer Sites. (2023). Performance development. 
+     Available: https://www.top500.org/
+     (Contemporary HPC system characteristics)
+
+================================================================================
+ADDITIONAL NOTES
+================================================================================
+
+Software Packages Referenced:
+- Trilinos: https://trilinos.github.io/
+- PETSc: https://petsc.org/
+- Aztec/AztecOO: Part of Trilinos
+- HYPRE: https://computing.llnl.gov/projects/hypre-scalable-linear-solvers-multigrid-methods
+
+Online Resources:
+- Templates for the Solution of Linear Systems (Barrett et al.):
+  https://www.netlib.org/templates/
+- Matrix Market: https://math.nist.gov/MatrixMarket/
+- SuiteSparse Matrix Collection: https://sparse.tamu.edu/
+
+================================================================================
+AUTHOR
+================================================================================
+Maintainer: Xinye Chen, Sorbonne University
+================================================================================
