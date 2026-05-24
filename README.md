@@ -1,8 +1,6 @@
 # mpi_krylov: Krylov Solver using MPI
 
-This project provides parallel implementations of Krylov subspace solvers for sparse linear systems using MPI. The solvers include Conjugate Gradient (CG), BiCGStab, GMRES, and communication avoid GMRES, with optional preconditioners such as Jacobi, Block Jacobi, and ILU0. 
-
-## Features
+This project provides parallel implementations of Krylov subspace solvers for sparse linear systems using MPI. The solvers include Conjugate Gradient (CG), BiCGStab, GMRES, and communication avoid GMRES, with optional preconditioners such as Jacobi, Block Jacobi, and ILU0. We feature the following charateristics of our software: 
 
 ### Communication-Avoiding Methods
 - **CA-CG**: s-step Conjugate Gradient with reduced global synchronizations
