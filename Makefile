@@ -13,39 +13,46 @@
 #   make        # Compile all source files and build the executable 'solver'
 #   make clean  # Remove object files and executable
 # ============================================================================
+CXX = mpic++
+CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -I./include
+LDFLAGS = 
 
-CXX      := mpicxx
-CXXFLAGS := -O3 -std=c++17 -Wall -Wextra -Iinclude -MMD -MP -fopenmp
+SRC_DIR = src
+OBJ_DIR = obj
+INC_DIR = include
 
-LDFLAGS  := -fopenmp
-LDLIBS   := 
+# Source files
+SOURCES = $(SRC_DIR)/main.cpp \
+          $(SRC_DIR)/matrix.cpp \
+          $(SRC_DIR)/utils.cpp \
+          $(SRC_DIR)/cg.cpp \
+          $(SRC_DIR)/bicgstab.cpp \
+          $(SRC_DIR)/gmres.cpp \
+          $(SRC_DIR)/ca_gmres.cpp \
+          $(SRC_DIR)/ca_kernels.cpp \
+          $(SRC_DIR)/jacobi.cpp \
+          $(SRC_DIR)/block_jacobi.cpp \
+          $(SRC_DIR)/ilu0.cpp \
+          $(SRC_DIR)/iluk.cpp \
+          $(SRC_DIR)/spai.cpp \
+          $(SRC_DIR)/additive_schwarz.cpp
 
-SRC_DIR := src
-OBJ_DIR := obj
-BIN     := solver
+OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 
-SRCS := $(wildcard $(SRC_DIR)/*.cpp)
-OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
-DEPS := $(OBJS:.o=.d)
+TARGET = solver
 
-all: $(BIN)
+.PHONY: all clean
 
-$(BIN): $(OBJS)
-	@echo "Linking $@"
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	@echo "Compiling $<"
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
--include $(DEPS)
-
-# 清理
 clean:
-	@echo "Cleaning..."
-	rm -rf $(OBJ_DIR) $(BIN)
-
-.PHONY: all clean
+	rm -rf $(OBJ_DIR) $(TARGET)
