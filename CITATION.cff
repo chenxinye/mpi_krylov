@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Chen"
+    given-names: "Xinye"
+    orcid: "https://orcid.org/0000-0003-1778-393X"
+    affiliation: "Sorbonne University, LIP6, CNRS"
+title: "MPI Krylov: Parallel Krylov Subspace Solvers with Communication-Avoiding Methods"
+version: 1.0.0
+date-released: 2026-05-24
+url: "https://github.com/chenxinye/mpi_krylov"
+repository-code: "https://github.com/chenxinye/mpi_krylov"
+keywords:
+  - "Krylov methods"
+  - "MPI"
+  - "parallel computing"
+  - "communication-avoiding algorithms"
+  - "iterative solvers"
+  - "sparse linear systems"
+  - "preconditioners"
+license: MIT
+abstract: >
+  MPI Krylov is a high-performance parallel library implementing
+  Krylov subspace methods for solving large-scale sparse linear systems.
+  It features communication-avoiding variants (CA-CG, CA-GMRES),
+  pipelined methods, and various preconditioners (Jacobi, ILU(0),
+  Additive Schwarz, Polynomial) optimized for distributed-memory systems.
+  The library utilizes advanced MPI techniques including halo exchange
+  and non-blocking communication for optimal scalability.
