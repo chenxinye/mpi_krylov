@@ -4,6 +4,7 @@
  * Communication-Avoiding BiCGStab (CA-BiCGStab)
  */
 
+
 #include "ca_bicgstab.hpp"
 #include <cmath>
 #include <algorithm>
@@ -25,7 +26,11 @@ int ca_bicgstab_solve(const CSRMatrix& A,
     int n = A.local_n();
     
     std::vector<double> r(n), r0(n), Ax(n);
-    distributed_matvec(A, x, Ax, comm);
+    if (A.halo_initialized) {
+        distributed_matvec_optimized(A, x, Ax, comm);
+    } else {
+        distributed_matvec(A, x, Ax, comm);
+    }
     for (int i = 0; i < n; ++i) {
         r[i] = b[i] - Ax[i];
     }
@@ -50,9 +55,7 @@ int ca_bicgstab_solve(const CSRMatrix& A,
             p[i] = r[i] + beta * (p[i] - omega * v[i]);
         }
 
-        // Perform s-step block computation
-        int effective_s = std::min(s, max_iter - total_iters);
-        
+        // Apply preconditioner and matvec
         std::vector<double> z(n), y(n);
         if (M) {
             M->apply(p, z);
@@ -60,7 +63,11 @@ int ca_bicgstab_solve(const CSRMatrix& A,
             z = p;
         }
 
-        distributed_matvec(A, z, v, comm);
+        if (A.halo_initialized) {
+            distributed_matvec_optimized(A, z, v, comm);
+        } else {
+            distributed_matvec(A, z, v, comm);
+        }
 
         alpha = rho / global_dot(r0, v, comm);
 
@@ -89,7 +96,11 @@ int ca_bicgstab_solve(const CSRMatrix& A,
         }
 
         std::vector<double> t(n);
-        distributed_matvec(A, y, t, comm);
+        if (A.halo_initialized) {
+            distributed_matvec_optimized(A, y, t, comm);
+        } else {
+            distributed_matvec(A, y, t, comm);
+        }
 
         omega = global_dot(t, s_vec, comm) / global_dot(t, t, comm);
 
@@ -113,6 +124,9 @@ int ca_bicgstab_solve(const CSRMatrix& A,
         }
 
         rho_old = rho;
+        
+        // Unused variable 's' removed - standard BiCGStab doesn't use s-step blocking
+        (void)s;  // Suppress warning
     }
 
     double final_norm = global_norm(r, comm);
