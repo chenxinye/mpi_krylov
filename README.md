@@ -2,8 +2,7 @@
 
 This project provides parallel implementations of Krylov subspace solvers for sparse linear systems using MPI. The solvers include Conjugate Gradient (CG), BiCGStab, GMRES, and communication avoid GMRES, with optional preconditioners such as Jacobi, Block Jacobi, and ILU0. 
 
-
-## 🚀 Features
+## Features
 
 ### Communication-Avoiding Methods
 - **CA-CG**: s-step Conjugate Gradient with reduced global synchronizations
@@ -22,8 +21,6 @@ This project provides parallel implementations of Krylov subspace solvers for sp
 - **Halo Exchange**: Replaces expensive Allgatherv
 - **Non-blocking Communication**: MPI_Isend/Irecv for overlap
 - **Multi-dot Reduction**: Single Allreduce for multiple dot products
-
----
 
 
 
